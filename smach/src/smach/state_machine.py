@@ -10,7 +10,7 @@ __all__ = ['StateMachine']
 ### State Machine class
 class StateMachine(smach.container.Container):
     """StateMachine
-    
+
     This is a finite state machine smach container. Note that though this is
     a state machine, it also implements the L{smach.State}
     interface, so these can be composed hierarchically, if such a pattern is
@@ -38,7 +38,7 @@ class StateMachine(smach.container.Container):
 
         # Call super's constructor
         smach.container.Container.__init__(self, outcomes, input_keys, output_keys)
-        
+
         # Properties
         self._state_transitioning_lock = threading.Lock()
 
@@ -75,12 +75,12 @@ class StateMachine(smach.container.Container):
     @staticmethod
     def add(label, state, transitions=None, remapping=None):
         """Add a state to the opened state machine.
-        
+
         @type label: string
         @param label: The label of the state being added.
-        
+
         @param state: An instance of a class implementing the L{State} interface.
-        
+
         @param transitions: A dictionary mapping state outcomes to other state
         labels or container outcomes.
 
@@ -188,13 +188,13 @@ class StateMachine(smach.container.Container):
     ### Internals
     def _set_current_state(self, state_label):
         if state_label is not None:
-            # Store the current label and states 
+            # Store the current label and states
             self._current_label = state_label
             self._current_state = self._states[state_label]
             self._current_transitions = self._transitions[state_label]
             self._current_outcome = None
         else:
-            # Store the current label and states 
+            # Store the current label and states
             self._current_label = None
             self._current_state = None
             self._current_transitions = None
@@ -224,7 +224,7 @@ class StateMachine(smach.container.Container):
                 # We were preempted while the last state was running
                 if self._preempted_state.preempt_requested():
                     smach.loginfo("Last state '%s' did not service preempt. Preempting next state '%s' before executing..." % (self._preempted_label, self._current_label))
-                    # The flag was not reset, so we need to keep preempting 
+                    # The flag was not reset, so we need to keep preempting
                     # (this will reset the current preempt)
                     self._preempt_current_state()
                 else:
@@ -239,6 +239,7 @@ class StateMachine(smach.container.Container):
         # Execute the state
         try:
             self._state_transitioning_lock.release()
+            smach.logdebug('Released state_transitioning_lock to execute the current state')
             outcome = self._current_state.execute(
                     smach.Remapper(
                         self.userdata,
@@ -254,6 +255,7 @@ class StateMachine(smach.container.Container):
                                              + traceback.format_exc())
         finally:
             self._state_transitioning_lock.acquire()
+            smach.logdebug('Acquired state_transitioning_lock after executing the current state')
 
         # Check if outcome was a potential outcome for this type of state
         if outcome not in self._current_state.get_registered_outcomes():
@@ -269,13 +271,13 @@ class StateMachine(smach.container.Container):
         if outcome not in self._current_transitions:
             raise smach.InvalidTransitionError("Outcome '%s' of state '%s' is not bound to any transition target. Bound transitions include: %s" %
                     (str(outcome), str(self._current_label), str(self._current_transitions)))
-        
+
         # Set the transition target
         transition_target = self._current_transitions[outcome]
 
         # Check if the transition target is a state in this state machine, or an outcome of this state machine
         if transition_target in self._states:
-            # Set the new state 
+            # Set the new state
             self._set_current_state(transition_target)
 
             # Spew some info
@@ -286,7 +288,7 @@ class StateMachine(smach.container.Container):
             self.call_transition_cbs()
         else:
             # This is a terminal state
-            
+
             if self._preempt_requested and self._preempted_state is not None:
                 if not self._current_state.preempt_requested():
                     self.service_preempt()
@@ -317,7 +319,7 @@ class StateMachine(smach.container.Container):
         """Run the state machine on entry to this state.
         This will set the "closed" flag and spin up the execute thread. Once
         this flag has been set, it will prevent more states from being added to
-        the state machine. 
+        the state machine.
         """
 
         # This will prevent preempts from getting propagated to non-existent children
@@ -336,7 +338,7 @@ class StateMachine(smach.container.Container):
             self._preempted_label = None
             self._preempted_state = None
 
-            # Set initial state 
+            # Set initial state
             self._set_current_state(self._initial_state_label)
 
             # Copy input keys
@@ -369,15 +371,18 @@ class StateMachine(smach.container.Container):
     ## Preemption management
     def request_preempt(self):
         """Propagate preempt to currently active state.
-        
+
         This will attempt to preempt the currently active state.
         """
+        smach.logdebug('Entering state_machine request_preempt')
         with self._state_transitioning_lock:
+            smach.logdebug('Acquired state_transitioning_lock')
             # Aleways Set this container's preempted flag
             self._preempt_requested = True
             # Only propagate preempt if the current state is defined
             if self._current_state is not None:
                 self._preempt_current_state()
+        smach.logdebug('Released state_transitioning_lock')
 
     def _preempt_current_state(self):
         """Preempt the current state (might not be executing yet).
