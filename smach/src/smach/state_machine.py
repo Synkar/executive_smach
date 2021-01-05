@@ -239,7 +239,7 @@ class StateMachine(smach.container.Container):
         # Execute the state
         try:
             self._state_transitioning_lock.release()
-            smach.logdebug('Released state_transitioning_lock to execute the current state')
+            smach.logwarn('Released state_transitioning_lock to execute the current state')
             outcome = self._current_state.execute(
                     smach.Remapper(
                         self.userdata,
@@ -255,7 +255,7 @@ class StateMachine(smach.container.Container):
                                              + traceback.format_exc())
         finally:
             self._state_transitioning_lock.acquire()
-            smach.logdebug('Acquired state_transitioning_lock after executing the current state')
+            smach.logwarn('Acquired state_transitioning_lock after executing the current state')
 
         # Check if outcome was a potential outcome for this type of state
         if outcome not in self._current_state.get_registered_outcomes():
@@ -374,15 +374,15 @@ class StateMachine(smach.container.Container):
 
         This will attempt to preempt the currently active state.
         """
-        smach.logdebug('Entering state_machine request_preempt')
+        smach.logwarn('Entering state_machine request_preempt')
         with self._state_transitioning_lock:
-            smach.logdebug('Acquired state_transitioning_lock')
+            smach.logwarn('Acquired state_transitioning_lock')
             # Aleways Set this container's preempted flag
             self._preempt_requested = True
             # Only propagate preempt if the current state is defined
             if self._current_state is not None:
                 self._preempt_current_state()
-        smach.logdebug('Released state_transitioning_lock')
+        smach.logwarn('Released state_transitioning_lock')
 
     def _preempt_current_state(self):
         """Preempt the current state (might not be executing yet).
